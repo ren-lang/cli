@@ -1,0 +1,8 @@
+elm-stuff
+node_modules
+.parcel-cache
+.vscode
+
+## Keep compiled example code out of the repo.
+example/.ren
+example/**/*.ren.mjs
