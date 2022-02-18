@@ -1,34 +1,37 @@
 {
-  "name": "ren",
-  "version": "1.0.0",
-  "description": "The CLI for the Ren programming language.",
-  "main": "bin/cli.js",
-  "scripts": {
-    "link": "npm link",
-    "unlink": "npm unlink ren",
-    "build:dev": "parcel build src/main.js --no-source-maps --no-optimize",
-    "build": "parcel build src/main.js --no-source-maps",
-    "watch": "parcel watch src/main.js --no-source-maps"
-  },
-  "keywords": [
-    "ren",
-    "functional-programming",
-    "compiler",
-    "programming-language"
-  ],
-  "author": "ren-lang",
-  "license": "MIT",
-  "bin": "bin/ren",
-  "devDependencies": {
-    "@parcel/transformer-elm": "^2.0.0-beta.2",
-    "elm": "^0.19.1-5",
-    "parcel": "^2.0.0-beta.2"
-  },
-  "targets": {
-    "main": {
-      "context": "node",
-      "distDir": "bin",
-      "includeNodeModules": false
+    "name": "ren",
+    "version": "1.0.0",
+    "description": "The CLI for the Ren programming language.",
+    "main": "bin/cli.js",
+    "scripts": {
+        "link": "npm link",
+        "unlink": "npm unlink ren",
+        "build:dev": "parcel build src/main.js --no-source-maps --no-optimize",
+        "build": "parcel build src/main.js --no-source-maps",
+        "watch": "parcel watch src/main.js --no-source-maps"
+    },
+    "keywords": [
+        "ren",
+        "functional-programming",
+        "compiler",
+        "programming-language"
+    ],
+    "author": "ren-lang",
+    "license": "MIT",
+    "bin": "bin/ren",
+    "dependencies": {
+        "chalk": "^4.0.0"
+    },
+    "devDependencies": {
+        "@parcel/transformer-elm": "^2.0.0-beta.2",
+        "elm": "^0.19.1-5",
+        "parcel": "^2.0.0-beta.2"
+    },
+    "targets": {
+        "main": {
+            "context": "node",
+            "distDir": "bin",
+            "includeNodeModules": false
+        }
     }
-  }
 }
