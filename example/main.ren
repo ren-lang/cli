@@ -1,0 +1,8 @@
+import "pkg ren/array" as Array
+import "pkg ren/console" exposing { log }
+
+pub let main = [ name ] => {
+    run log `Hi there ${name}, Ren says hello!`
+
+    ret Array.map (_ + 1) [1, 2, 3, 4, 5]
+}
