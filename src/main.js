@@ -77,7 +77,9 @@ function make() {
                 })
 
                 // Copy over the standard library --------------------------
-                const stdlibDir = Path.resolve(__dirname, './ren')
+                // I know the "../src" bit looks unnecessary, but remember that this
+                // file will be run from ./bin, not ./src.
+                const stdlibDir = Path.resolve(__dirname, '../src/ren')
 
                 try {
                     Fs.mkdirSync(`${renDir}/deps/ren`, { recursive: true })
