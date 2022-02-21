@@ -58,10 +58,7 @@ function make() {
                             const relativeRenDir =
                                 './' + Path.relative(Path.dirname(path), renDir)
 
-                            const src = data.src.replaceAll(
-                                renDir,
-                                relativeRenDir
-                            )
+                            const src = data.src.replaceAll(renDir, relativeRenDir)
                             Fs.writeFileSync(name, src, {
                                 encoding: 'utf8',
                             })
@@ -84,14 +81,14 @@ function make() {
                 try {
                     Fs.mkdirSync(`${renDir}/deps/ren`, { recursive: true })
                 } catch {
-                    // Should probably do something meaningful here at some
+                    // TODO: Should probably do something meaningful here at some
                     // point...
                 }
 
                 Fs.readdirSync(stdlibDir).forEach((stdlibModule) => {
                     Fs.copyFileSync(
                         Path.join(stdlibDir, stdlibModule),
-                        `${renDir}/deps/ren/${stdlibModule}`
+                        `${renDir}/deps/ren/${stdlibModule}`,
                     )
                 })
 
@@ -129,9 +126,7 @@ function main() {
     const command = commands.get(commandName)
 
     if (!command) {
-        console.error(
-            `${Chalk.red('error')}: no such subcommand: "${commandName}"\n`
-        )
+        console.error(`${Chalk.red('error')}: no such subcommand: "${commandName}"\n`)
 
         console.log('  Did you mean one of these?')
 

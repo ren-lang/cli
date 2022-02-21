@@ -3,9 +3,7 @@ import * as Maybe from './maybe.ren.mjs'
 // get : String -> * -> Maybe a
 export function get(key) {
     return (obj) => {
-        return key in obj
-            ? Maybe.just(obj[key])
-            : Maybe.nothing
+        return key in obj ? Maybe.just(obj[key]) : Maybe.nothing
     }
 }
 

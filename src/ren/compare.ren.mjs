@@ -8,7 +8,8 @@ export function eq(x) {
             let b = values.pop()
 
             if (a === b) continue
-            if (a === null || a === undefined || b === null || b === undefined) return false
+            if (a === null || a === undefined || b === null || b === undefined)
+                return false
 
             if (typeof a === 'object' || typeof b === 'object') {
                 if (a.valueOf() === b.valueOf()) continue

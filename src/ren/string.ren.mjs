@@ -7,7 +7,6 @@ export function split(separator) {
     }
 }
 
-
 // join : String -> Array String -> String
 export function join(separator) {
     return (strings) => {
@@ -26,9 +25,7 @@ export function append(a) {
 export function toNumber(string) {
     const number = Number(string)
 
-    return isNaN(number)
-        ? $nothing
-        : $just(number)
+    return isNaN(number) ? $nothing : $just(number)
 }
 
 // isEmpty : String -> Boolean
@@ -58,9 +55,7 @@ export function drop(n) {
 // take : Number -> String -> Maybe String
 export function take(n) {
     return (string) => {
-        return string === ''
-            ? $nothing
-            : $just(string.substring(0, n))
+        return string === '' ? $nothing : $just(string.substring(0, n))
     }
 }
 

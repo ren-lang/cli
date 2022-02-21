@@ -11,7 +11,7 @@ export function singleton(a) {
 // repeat : Number -> a -> Array a
 export function repeat(length) {
     return (a) => {
-        return Array.from({ length }, _ => a)
+        return Array.from({ length }, (_) => a)
     }
 }
 
@@ -32,9 +32,7 @@ export function cons(head) {
 export function uncons(arr) {
     const [h, ...t] = arr
 
-    return h === undefined
-        ? $nothing
-        : $just([h, t])
+    return h === undefined ? $nothing : $just([h, t])
 }
 
 // join : Array a -> Array a -> Array a
@@ -79,7 +77,6 @@ export function map3(f) {
 
         return arr
     }
-
 }
 
 // indexedMap : (Number -> a -> b) -> Array a -> Array b
@@ -177,7 +174,7 @@ export function filterMap(f) {
 // forEach : (a -> ()) -> Array a -> ()
 export function forEach(f) {
     return (arr) => {
-        arr.forEach(a => f(a))
+        arr.forEach((a) => f(a))
     }
 }
 
@@ -229,9 +226,7 @@ export function reverse(arr) {
 
 // head : Array a -> Maybe a
 export function head(arr) {
-    return arr.length >= 1
-        ? $just(arr[0])
-        : $nothing
+    return arr.length >= 1 ? $just(arr[0]) : $nothing
 }
 
 // tail : Array a -> Array a
@@ -243,7 +238,7 @@ export function tail(arr) {
 // member : a -> Array a
 export function member(a) {
     return (arr) => {
-        return arr.some(b => Compare.eq(a)(b))
+        return arr.some((b) => Compare.eq(a)(b))
     }
 }
 
@@ -290,12 +285,12 @@ export function product(arr) {
     return arr.reduce((x, y) => x * y, 1)
 }
 
-// max : Array Number -> Number 
+// max : Array Number -> Number
 export function max(arr) {
     return arr.reduce((x, y) => Math.max(x, y))
 }
 
-// min : Array Number -> Number 
+// min : Array Number -> Number
 export function min(arr) {
     return arr.reduce((x, y) => Math.min(x, y))
 }

@@ -2,36 +2,32 @@
     "name": "ren",
     "version": "1.0.0",
     "description": "The CLI for the Ren programming language.",
-    "main": "bin/cli.js",
-    "scripts": {
-        "link": "npm link",
-        "unlink": "npm unlink ren",
-        "build:dev": "parcel build src/main.js --no-source-maps --no-optimize",
-        "build": "parcel build src/main.js --no-source-maps",
-        "watch": "parcel watch src/main.js --no-source-maps"
-    },
+    "author": "ren-lang",
+    "license": "MIT",
     "keywords": [
         "ren",
         "functional-programming",
         "compiler",
         "programming-language"
     ],
-    "author": "ren-lang",
-    "license": "MIT",
-    "bin": "bin/ren",
+    "main": "./bin/cli.js",
+    "bin": "./bin/ren",
     "dependencies": {
         "chalk": "^4.0.0"
     },
     "devDependencies": {
-        "@parcel/transformer-elm": "^2.0.0-beta.2",
         "elm": "^0.19.1-5",
-        "parcel": "^2.0.0-beta.2"
+        "esbuild": "^0.14.23",
+        "esbuild-plugin-elm": "^0.0.8",
+        "prettier": "^2.5.1",
+        "prettier-plugin-elm": "^0.8.0"
     },
-    "targets": {
-        "main": {
-            "context": "node",
-            "distDir": "bin",
-            "includeNodeModules": false
-        }
+    "scripts": {
+        "build": "./build.js --production",
+        "build:dev": "./build.js",
+        "watch": "./build.js -w",
+        "fmt": "prettier --write .",
+        "link": "npm link",
+        "unlink": "npm unlink ren"
     }
 }

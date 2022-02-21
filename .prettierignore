@@ -1,10 +1,14 @@
 .DS_Store
 .env*
 .idea/
-.vscode/
-elm-stuff/
+build/
+dist/
 node_modules/
+package-lock.json
+Pipfile.lock
+target/
 *.log
+*.tsbuildinfo
 
 ## Ignore compiled example code
 example/.ren/
