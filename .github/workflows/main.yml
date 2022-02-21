@@ -26,8 +26,10 @@ jobs:
               name: Install dependencies
             - run: npx prettier --check .
               name: Check code formatting
+              if: matrix.node-version == '16.x'
 
             - run: npm run build
               name: Build
-            - run: git diff --name-only --exit-code
+            - run: git diff --name-only --exit-code ./bin/
               name: Make sure ./bin/cli.js is up to date
+              if: matrix.node-version == '16.x'
