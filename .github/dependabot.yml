@@ -5,7 +5,7 @@ updates:
       schedule:
           interval: daily
       allow:
-          - depencency-name: 'ren-lang/compiler'
+          - dependency-name: 'ren-lang/compiler'
       assignees:
           - 'hayleigh-dot-dev'
           - 'aslilac'
