@@ -45,64 +45,68 @@ function make() {
         0: Object.fromEntries(entries),
     })
 
-    compiler.ports.toFs?.subscribe(({ $, ...data }) => {
-        switch ($) {
-            case 'WriteFiles': {
-                // Compile each ren source file to javascript in place -----
-                const { files } = data
+    return new Promise((resolve) => {
+        compiler.ports.toFs?.subscribe(({ $, ...data }) => {
+            switch ($) {
+                case 'WriteFiles': {
+                    // Compile each ren source file to javascript in place -----
+                    const { files } = data
 
-                Object.entries(files).forEach(([path, { $, ...data }]) => {
-                    switch ($) {
-                        case 'Ok': {
-                            const name = `${path}.mjs`
-                            const relativeRenDir =
-                                './' + Path.relative(Path.dirname(path), renDir)
+                    Object.entries(files).forEach(([path, { $, ...data }]) => {
+                        switch ($) {
+                            case 'Ok': {
+                                const name = `${path}.mjs`
+                                const relativeRenDir =
+                                    './' + Path.relative(Path.dirname(path), renDir)
 
-                            const src = data.src.replaceAll(renDir, relativeRenDir)
-                            Fs.writeFileSync(name, src, {
-                                encoding: 'utf8',
-                            })
+                                const src = data.src.replaceAll(renDir, relativeRenDir)
+                                Fs.writeFileSync(name, src, {
+                                    encoding: 'utf8',
+                                })
 
-                            break
+                                break
+                            }
+
+                            case 'Err': {
+                                console.error(`Error while compiling ${path}:`)
+                                console.error(data.err, '\n')
+                            }
                         }
+                    })
 
-                        case 'Err': {
-                            console.error(`Error while compiling ${path}:`)
-                            console.error(data.err, '\n')
-                        }
+                    // Copy over the standard library --------------------------
+                    // I know the "../src" bit looks unnecessary, but remember that this
+                    // file will be run from ./bin, not ./src.
+                    const stdlibDir = Path.resolve(__dirname, '../src/ren')
+
+                    try {
+                        Fs.mkdirSync(`${renDir}/deps/ren`, { recursive: true })
+                    } catch {
+                        // TODO: Should probably do something meaningful here at some
+                        // point...
                     }
-                })
 
-                // Copy over the standard library --------------------------
-                // I know the "../src" bit looks unnecessary, but remember that this
-                // file will be run from ./bin, not ./src.
-                const stdlibDir = Path.resolve(__dirname, '../src/ren')
+                    Fs.readdirSync(stdlibDir).forEach((stdlibModule) => {
+                        Fs.copyFileSync(
+                            Path.join(stdlibDir, stdlibModule),
+                            `${renDir}/deps/ren/${stdlibModule}`,
+                        )
+                    })
 
-                try {
-                    Fs.mkdirSync(`${renDir}/deps/ren`, { recursive: true })
-                } catch {
-                    // TODO: Should probably do something meaningful here at some
-                    // point...
+                    break
                 }
-
-                Fs.readdirSync(stdlibDir).forEach((stdlibModule) => {
-                    Fs.copyFileSync(
-                        Path.join(stdlibDir, stdlibModule),
-                        `${renDir}/deps/ren/${stdlibModule}`,
-                    )
-                })
-
-                break
             }
-        }
+
+            resolve()
+        })
     })
 }
 
-function run() {
+async function run() {
     const [dir] = args
     const entry = Path.resolve(Process.cwd(), dir)
 
-    make()
+    await make()
 
     import(Path.join(entry, 'main.ren.mjs')).then(({ main }) => {
         if (typeof main == 'function') {
