@@ -6,6 +6,6 @@ updates:
           interval: daily
       allow:
           - dependency-name: 'ren-lang/compiler'
-      assignees:
+      reviewers:
           - 'hayleigh-dot-dev'
           - 'aslilac'
