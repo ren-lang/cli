@@ -33,3 +33,6 @@ jobs:
             - run: git diff --name-only --exit-code ./bin/
               name: Make sure ./bin/cli.js is up to date
               if: matrix.node-version == '16.x'
+
+            - run: ./bin/ren run ./example/
+              name: Test — Build Example
