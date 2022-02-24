@@ -1,7 +1,13 @@
-// log : a -> a
-export function log(message) {
+// debug : a -> a
+export function debug(message) {
     console.dir(message, { depth: null })
     return message
+}
+
+// print : a -> ()
+export function print(message) {
+    console.log(message)
+    return undefined;
 }
 
 // warn : a -> a
