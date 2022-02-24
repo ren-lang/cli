@@ -110,15 +110,15 @@ addStdlib : Module meta -> Module meta
 addStdlib { imports, declarations } =
     let
         stdlib =
-            [ Ren.AST.Module.Import "pkg ren/array" [ "Array" ] []
-            , Ren.AST.Module.Import "pkg ren/compare" [ "Compare" ] []
-            , Ren.AST.Module.Import "pkg ren/function" [ "Function" ] []
-            , Ren.AST.Module.Import "pkg ren/logic" [ "Logic" ] []
-            , Ren.AST.Module.Import "pkg ren/math" [ "Math" ] []
-            , Ren.AST.Module.Import "pkg ren/maybe" [ "Maybe" ] []
-            , Ren.AST.Module.Import "pkg ren/object" [ "Object" ] []
-            , Ren.AST.Module.Import "pkg ren/promise" [ "Promise" ] []
-            , Ren.AST.Module.Import "pkg ren/string" [ "String" ] []
+            [ Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/array") [ "Array" ] []
+            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/compare") [ "Compare" ] []
+            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/function") [ "Function" ] []
+            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/logic") [ "Logic" ] []
+            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/math") [ "Math" ] []
+            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/maybe") [ "Maybe" ] []
+            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/object") [ "Object" ] []
+            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/promise") [ "Promise" ] []
+            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/string") [ "String" ] []
             ]
     in
     { imports =
@@ -156,17 +156,15 @@ resolveImports renDir { imports, declarations } =
         List.map
             (\{ path, name, exposed } ->
                 { path =
-                    if String.startsWith "ext " path then
-                        String.replace "ext " "" path
+                    case path of
+                        Ren.AST.Module.ExternalImport p ->
+                            Ren.AST.Module.ExternalImport p
 
-                    else if String.startsWith "pkg " path then
-                        renDir
-                            ++ "/deps/"
-                            ++ String.replace "pkg " "" path
-                            ++ ".ren.mjs"
+                        Ren.AST.Module.PackageImport p ->
+                            Ren.AST.Module.PackageImport <| renDir ++ "/deps/" ++ p ++ ".ren.mjs"
 
-                    else
-                        path ++ ".ren.mjs"
+                        Ren.AST.Module.LocalImport p ->
+                            Ren.AST.Module.LocalImport <| p ++ ".ren.mjs"
                 , name = name
                 , exposed = exposed
                 }
