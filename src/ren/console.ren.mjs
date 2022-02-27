@@ -7,7 +7,7 @@ export function debug(message) {
 // print : a -> ()
 export function print(message) {
     console.log(message)
-    return undefined;
+    return undefined
 }
 
 // warn : a -> a

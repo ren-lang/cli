@@ -13,25 +13,28 @@ const compiler = Elm.Main.init({
         // methods like `lstatSync` requires function calls to use but even with
         // our hacky Elm FFI shenanigans we wouldn't be able to call those, so
         // here we're defining a few functions that abstract that for us.
-        fs: makeProxy({
-            isFile(path) {
-                return Fs.lstatSync(path).isFile()
+        fs: makeProxy(
+            {
+                isFile(path) {
+                    return Fs.lstatSync(path).isFile()
+                },
+                isDirectory(path) {
+                    return Fs.lstatSync(path).isDirectory()
+                },
+                ...Fs,
             },
-            isDirectory(path) {
-                return Fs.lstatSync(path).isDirectory()
-            },
-            ...Fs
-        }, 'FFI.Fs'),
+            'FFI.Fs',
+        ),
         path: makeProxy(Path, 'FFI.Path'),
-        process: makeProxy(Process, 'FFI.Process')
-    }
+        process: makeProxy(Process, 'FFI.Process'),
+    },
 })
 
-compiler.ports.stdout?.subscribe(msg => {
+compiler.ports.stdout?.subscribe((msg) => {
     console.log(msg)
 })
 
-compiler.ports.stderr?.subscribe(msg => {
+compiler.ports.stderr?.subscribe((msg) => {
     console.error(msg)
 })
 
