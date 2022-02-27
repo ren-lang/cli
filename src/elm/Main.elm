@@ -1,231 +1,166 @@
-port module Main exposing (main)
+port module Main exposing (..)
 
 -- IMPORTS ---------------------------------------------------------------------
 
-import Data.IO exposing (IO)
-import Data.Project
-import Dict exposing (Dict)
+import Commands.Make as Make
+import Commands.New as New
+import Commands.Run as Run
+import Data.Result as Result
+import Data.String as String
+import FFI.Chalk
+import FFI.Fs
+import FFI.Path
+import FFI.Process
 import Json.Decode
-import Json.Encode
-import Ren.AST.Module exposing (Module)
-import Ren.Compiler exposing (typed, untyped)
+import Process
+import Task
+
+
+
+-- RUNNING THE CLI -------------------------------------------------------------
+
+
+{-| -}
+type alias FFI =
+    { chalk : FFI.Chalk.Chalk
+    , fs : FFI.Fs.Fs
+    , path : FFI.Path.Path
+    , process : FFI.Process.Process
+    }
+
+
+{-| -}
+run : FFI -> Cmd Int
+run ({ chalk, path, process } as ffi) =
+    -- The first two elements in `argv` are the path of the Node executable and
+    -- the path of the JavaScript file being executed respectively. I think we can
+    -- safely ignore those, so we'll just drop them instead of pattern matching
+    -- them.
+    case List.drop 2 process.argv of
+        "new" :: name :: _ ->
+            New.run ffi name
+                |> Result.extract (exitWithMessage 0) (exitWithError 1)
+
+        "make" :: root :: _ ->
+            path.join [ process.cwd (), root ]
+                |> Make.run ffi
+                |> Result.extract (exitWithMessage 0) (exitWithError 1)
+
+        "make" :: [] ->
+            process.cwd ()
+                |> Make.run ffi
+                |> Result.extract (exitWithMessage 0) (exitWithError 1)
+
+        "run" :: "--make" :: args ->
+            process.cwd ()
+                |> Make.run ffi
+                |> Result.mapError (exitWithError 1)
+                |> Result.andThen
+                    (\_ ->
+                        path.join [ process.cwd (), "src", "main.ren" ]
+                            |> Run.run ffi
+                            |> Result.map (\filePath -> exec ( filePath, args ))
+                            |> Result.mapError (exitWithError 1)
+                    )
+                |> Result.unwrap
+
+        "run" :: args ->
+            path.join [ process.cwd (), "src", "main.ren" ]
+                |> Run.run ffi
+                |> Result.extract (\filePath -> exec ( filePath, args )) (exitWithError 1)
+
+        [ "repl" ] ->
+            exit 0
+
+        command :: _ ->
+            exitWithError 1 <|
+                String.join "\n"
+                    [ chalk.red "[Unknown Command] I didn't recognise that command, did you mean one of these:"
+                    , ""
+                    , "  - ren " ++ chalk.green "new " ++ " <project_name>"
+                    , "  - ren " ++ chalk.green "make"
+                    , "  - ren " ++ chalk.green "run " ++ " <file_name>"
+                    , ""
+                    ]
+
+        [] ->
+            exitWithMessage 0 <|
+                String.join "\n"
+                    []
+
+
+
+-- EXITS AND ERROR HANDLING ----------------------------------------------------
+
+
+{-| -}
+exit : Int -> Cmd Int
+exit code =
+    -- This sleep is necessary to stop Elm from synchronously calling `update`
+    -- and exiting immediately.
+    Task.perform (\_ -> code) (Process.sleep 0)
+
+
+{-| -}
+exitWithMessage : Int -> String -> Cmd Int
+exitWithMessage code message =
+    Cmd.batch [ exit code, stdout message ]
+
+
+{-| -}
+exitWithError : Int -> String -> Cmd Int
+exitWithError code message =
+    Cmd.batch [ exit code, stderr message ]
 
 
 
 -- MAIN ------------------------------------------------------------------------
 
 
-main : Program Flags Model Msg
+main : Program Json.Decode.Value (Maybe FFI) Int
 main =
     Platform.worker
-        { init = init
-        , update = update
-        , subscriptions = subscriptions
+        { init =
+            \flags ->
+                let
+                    ffiDecoder =
+                        Json.Decode.map4 FFI
+                            (Json.Decode.field "chalk" FFI.Chalk.decoder)
+                            (Json.Decode.field "fs" FFI.Fs.decoder)
+                            (Json.Decode.field "path" FFI.Path.decoder)
+                            (Json.Decode.field "process" FFI.Process.decoder)
+                in
+                case Json.Decode.decodeValue ffiDecoder flags of
+                    Ok ffi ->
+                        ( Just ffi, run ffi )
+
+                    Err _ ->
+                        ( Nothing
+                        , stderr <|
+                            "Uh oh, it looks like there was an internal error while trying to "
+                                ++ "initialise some FFI code. Please open an issue at "
+                                ++ "https://ren-lang.github.com/cli."
+                        )
+        , update =
+            \code ffi ->
+                case ffi of
+                    Just { process } ->
+                        ( Basics.always ffi <| process.exit code, Cmd.none )
+
+                    Nothing ->
+                        ( ffi, Cmd.none )
+        , subscriptions = \_ -> Sub.none
         }
 
 
 
--- MODEL -----------------------------------------------------------------------
+-- PORTS -----------------------------------------------------------------------
 
 
-type Model
-    = Idle
-    | Compiling
-        { renDir : String
-        }
+port stdout : String -> Cmd msg
 
 
-type alias Flags =
-    ()
+port stderr : String -> Cmd msg
 
 
-init : Flags -> IO Msg Model
-init _ =
-    Data.IO.pure Idle
-
-
-
--- UPDATE ----------------------------------------------------------------------
-
-
-type Msg
-    = GotProject (Dict String String)
-    | GotProjectMetadata String
-    | None
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case ( msg, model ) of
-        ( GotProjectMetadata renDir, Idle ) ->
-            Data.IO.pure
-                (Compiling
-                    { renDir = renDir
-                    }
-                )
-
-        ( GotProjectMetadata _, _ ) ->
-            Data.IO.pure model
-
-        ( GotProject project, Compiling { renDir } ) ->
-            let
-                toolchain =
-                    -- Ren's type system is incomplete, if this is causing you
-                    -- problems for now just disable type checking altogether by
-                    -- using `untyped` instead.
-                    { typed | validate = addStdlib >> resolveImports renDir >> typed.validate }
-            in
-            Data.IO.pure model
-                |> Data.IO.with
-                    (project
-                        |> Data.Project.fromFiles
-                        |> Data.Project.map (Ren.Compiler.run toolchain)
-                        |> Data.Project.toFiles
-                        |> writeFiles
-                    )
-
-        ( GotProject _, _ ) ->
-            Data.IO.pure model
-
-        ( None, _ ) ->
-            Data.IO.pure model
-
-
-port toFs : Json.Encode.Value -> Cmd msg
-
-
-{-| Once upon a time this function was neccessary because you could use operators
-as functions (by writing `(+) 1` for example) and it would compile to the relevent
-function call.
-
-These days, Ren has removed that behaviour (it was superceded by the placeholder
-variable `(1 + _)`) so I'm not entirely sure if this is needed anymore. Still,
-we'll keep it around for now.
-
-Also once upon a time we had an optimisation pass that would remove unused imports
-from the emitted code, but that has gone (but only temporarily) for now too.
-
--}
-addStdlib : Module meta -> Module meta
-addStdlib { imports, declarations } =
-    let
-        stdlib =
-            [ Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/array") [ "Array" ] []
-            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/compare") [ "Compare" ] []
-            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/function") [ "Function" ] []
-            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/logic") [ "Logic" ] []
-            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/math") [ "Math" ] []
-            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/maybe") [ "Maybe" ] []
-            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/object") [ "Object" ] []
-            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/promise") [ "Promise" ] []
-            , Ren.AST.Module.Import (Ren.AST.Module.PackageImport "ren/string") [ "String" ] []
-            ]
-    in
-    { imports =
-        stdlib
-            -- It's a javascript error to `import` two things with the same name.
-            -- This is a super crude workaround that just removes any stdlib imports
-            -- from the list above, if there is already an import with the same
-            -- name in the module.
-            |> List.filter (\{ name } -> Basics.not (List.any (.name >> (==) name) imports))
-            |> (++) imports
-    , declarations = declarations
-    }
-
-
-{-| The compiler itself isn't really concerned with module paths and imports and
-dependency resolution, so the path of an import is really open to interpretation
-from the particular piece of tooling being written.
-
-In this case, we're special-handling two non-standard paths:
-
-    - import "ext ./some_local.js" as Local
-    - import "pkg ren/maybe" as Maybe
-
-The `ext` paths are for importing non-ren code (typically javascript, but you could
-import some CSS and make use of CSS modules, for example). The proceeding path is
-not altered at all: the resulting javascript import will use what is written exactly.
-
-`pkg` paths are for importing external ren dependencies. The compiler throws these
-in a `.ren/deps` directory in the project, and so we transform a path
-
--}
-resolveImports : String -> Module meta -> Module meta
-resolveImports renDir { imports, declarations } =
-    { imports =
-        List.map
-            (\{ path, name, exposed } ->
-                { path =
-                    case path of
-                        Ren.AST.Module.ExternalImport p ->
-                            Ren.AST.Module.ExternalImport p
-
-                        Ren.AST.Module.PackageImport p ->
-                            Ren.AST.Module.PackageImport <| renDir ++ "/deps/" ++ p ++ ".ren.mjs"
-
-                        Ren.AST.Module.LocalImport p ->
-                            Ren.AST.Module.LocalImport <| p ++ ".ren.mjs"
-                , name = name
-                , exposed = exposed
-                }
-            )
-            imports
-    , declarations = declarations
-    }
-
-
-writeFiles : Dict String (Result error String) -> Cmd msg
-writeFiles files =
-    let
-        encodeFile file =
-            case file of
-                Ok src ->
-                    Json.Encode.object
-                        [ ( "$", Json.Encode.string "Ok" )
-                        , ( "src", Json.Encode.string src )
-                        ]
-
-                Err _ ->
-                    Json.Encode.object
-                        [ ( "$", Json.Encode.string "Err" )
-                        , ( "err", Json.Encode.string "" )
-                        ]
-    in
-    toFs <|
-        Json.Encode.object
-            [ ( "$", Json.Encode.string "WriteFiles" )
-            , ( "files", Json.Encode.dict identity encodeFile files )
-            ]
-
-
-
--- SUBSCRIPTIONS ---------------------------------------------------------------
-
-
-subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.batch
-        [ fromFs (Json.Decode.decodeValue fromFsDecoder >> Result.withDefault None)
-        ]
-
-
-port fromFs : (Json.Decode.Value -> msg) -> Sub msg
-
-
-fromFsDecoder : Json.Decode.Decoder Msg
-fromFsDecoder =
-    Json.Decode.field "$" Json.Decode.string
-        |> Json.Decode.andThen
-            (\tag ->
-                case tag of
-                    "GotProject" ->
-                        Json.Decode.map GotProject
-                            (Json.Decode.field "0" (Json.Decode.dict Json.Decode.string))
-
-                    "GotProjectMetadata" ->
-                        Json.Decode.map GotProjectMetadata
-                            (Json.Decode.field "0" Json.Decode.string)
-
-                    _ ->
-                        Json.Decode.fail ""
-            )
+port exec : ( String, List String ) -> Cmd msg
