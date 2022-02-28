@@ -1,2 +1,4 @@
+ext greeting 
+
 pub let main = _argv =>
-    console.log "Hello world!"
+    console.log greeting
