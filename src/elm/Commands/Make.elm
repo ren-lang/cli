@@ -94,20 +94,29 @@ collect ({ fs, path } as ffi) dir =
 
 {-| -}
 compile : { ffi | fs : Fs, path : Path } -> String -> List String -> Dict String (Result Compiler.Error String)
-compile ({ fs } as ffi) dotRenPath sources =
+compile ({ fs, path } as ffi) dotRenPath sources =
     let
         toolchain sourcePath =
             { typed | desugar = resolve ffi sourcePath dotRenPath >> typed.desugar }
     in
     List.foldl
-        (\path files ->
+        (\sourcePath files ->
             let
+                -- For modules that have `ext` declarations, the compiler automatically
+                -- inserts an import using the name passed in to `Compiler.run`
+                -- plus `.ffi.mjs`.
+                --
+                -- This just gets the file name from the source path and strips
+                -- the `.ren` extension.
+                ffiPath =
+                    "./" ++ path.basename sourcePath (Just ".ren")
+
                 file =
-                    fs.readFile path "utf8"
+                    fs.readFile sourcePath "utf8"
                         |> Result.fromMaybe (Compiler.ParseError [])
-                        |> Result.andThen (Compiler.run <| toolchain path)
+                        |> Result.andThen (Compiler.run ffiPath <| toolchain sourcePath)
             in
-            Dict.insert path file files
+            Dict.insert sourcePath file files
         )
         Dict.empty
         sources
