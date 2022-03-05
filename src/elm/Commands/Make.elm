@@ -57,7 +57,7 @@ verify { fs, path } rootPath =
             |> Error.withHint "You can run `ren new` to scaffold a new project."
             |> Err
 
-    else if (Basics.not <| fs.exists renPath) || (Basics.not <| fs.exists renPath) then
+    else if (Basics.not <| fs.exists renPath) || (Basics.not <| fs.isDir renPath) then
         Error.from "Verification Error" "I ran into an error verifying your Ren project"
             |> Error.withMessage "Could not locate your .ren directory."
             |> Error.withHint "You can run `ren new` to scaffold a new project."
@@ -143,6 +143,13 @@ resolve { path } sourcePath dotRenPath =
                         -- us!
                         Module.PackageImport importPath ->
                             let
+                                importPathWithExt =
+                                    if String.endsWith ".ren" importPath then
+                                        importPath
+
+                                    else
+                                        importPath ++ ".ren"
+
                                 -- So pkg imports look something like "ren/core/array"
                                 -- or more generally "{author}/{package}/{module}".
                                 --
@@ -158,7 +165,7 @@ resolve { path } sourcePath dotRenPath =
                                 --     import pkg "ren/core/src/array"
                                 --
                                 importPathWithSrc =
-                                    case String.split "/" importPath of
+                                    case String.split "/" importPathWithExt of
                                         -- Maybe this should go somewhere else, but
                                         -- this will desugar an import like:
                                         --

@@ -2,6 +2,7 @@ port module Main exposing (..)
 
 -- IMPORTS ---------------------------------------------------------------------
 
+import Commands.Add as Add
 import Commands.Make as Make
 import Commands.New as New
 import Commands.Run as Run
@@ -9,6 +10,7 @@ import Data.Result as Result
 import Data.String as String
 import FFI.Chalk
 import FFI.Fs
+import FFI.Gitly
 import FFI.Path
 import FFI.Process
 import Json.Decode
@@ -24,6 +26,7 @@ import Task
 type alias FFI =
     { chalk : FFI.Chalk.Chalk
     , fs : FFI.Fs.Fs
+    , gitly : FFI.Gitly.Gitly
     , path : FFI.Path.Path
     , process : FFI.Process.Process
     }
@@ -68,6 +71,10 @@ run ({ chalk, path, process } as ffi) =
             path.join [ process.cwd (), "src", "main.ren" ]
                 |> Run.run ffi
                 |> Result.extract (\filePath -> exec ( filePath, args )) (exitWithError 1)
+
+        "add" :: pkg :: _ ->
+            Add.run ffi (process.cwd ()) pkg
+                |> Result.extract (Basics.always Cmd.none) (exitWithError 1)
 
         [ "repl" ] ->
             exit 0
@@ -124,9 +131,10 @@ main =
             \flags ->
                 let
                     ffiDecoder =
-                        Json.Decode.map4 FFI
+                        Json.Decode.map5 FFI
                             (Json.Decode.field "chalk" FFI.Chalk.decoder)
                             (Json.Decode.field "fs" FFI.Fs.decoder)
+                            (Json.Decode.field "gitly" FFI.Gitly.decoder)
                             (Json.Decode.field "path" FFI.Path.decoder)
                             (Json.Decode.field "process" FFI.Process.decoder)
                 in
