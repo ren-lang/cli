@@ -143,8 +143,49 @@ resolve { path } sourcePath dotRenPath =
                         -- us!
                         Module.PackageImport importPath ->
                             let
+                                -- So pkg imports look something like "ren/core/array"
+                                -- or more generally "{author}/{package}/{module}".
+                                --
+                                -- On the file system though, module source files
+                                -- are stored in a "src" directory and so here we
+                                -- desugaring these package imports to insert that
+                                -- directory into the path:
+                                --
+                                --     import pkg "ren/core/array"
+                                --
+                                -- becomes:
+                                --
+                                --     import pkg "ren/core/src/array"
+                                --
+                                importPathWithSrc =
+                                    case String.split "/" importPath of
+                                        -- Maybe this should go somewhere else, but
+                                        -- this will desugar an import like:
+                                        --
+                                        --     import pkg "ren/dom"
+                                        --
+                                        -- into:
+                                        --
+                                        --     import pkg "ren/dom/dom.ren"
+                                        --
+                                        -- Which seems like a nice convinience for
+                                        -- packages that consist of one module
+                                        -- whose name is the same as the package
+                                        -- name.
+                                        author :: pkg :: [] ->
+                                            String.join "/" [ author, pkg, "src", pkg ++ ".ren" ]
+
+                                        author :: pkg :: actualPath ->
+                                            String.join "/" (author :: pkg :: "src" :: actualPath)
+
+                                        -- We should probably throw an error or
+                                        -- something here instead, but for now
+                                        -- whatever...
+                                        _ ->
+                                            importPath
+
                                 relativeImportPath =
-                                    path.join [ relativeDotRenDir, "deps", importPath ++ ".mjs" ]
+                                    path.join [ relativeDotRenDir, "deps", importPathWithSrc ++ ".mjs" ]
                             in
                             Module.PackageImport <|
                                 -- Node won't be happy if our would-be relative
@@ -164,6 +205,9 @@ resolve { path } sourcePath dotRenPath =
                         -- to ".mjs" ones.
                         Module.LocalImport importPath ->
                             Module.LocalImport <|
+                                -- The ".ren" extension is optional, so we need
+                                -- to remember to explicitly add it back when
+                                -- constructing the js import.
                                 if path.extname importPath == "" then
                                     importPath ++ ".ren.mjs"
 
