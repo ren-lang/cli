@@ -13,7 +13,8 @@
     "main": "./bin/cli.js",
     "bin": "./bin/ren",
     "dependencies": {
-        "chalk": "^4.0.0"
+        "chalk": "^4.0.0",
+        "gitly": "^2.1.6"
     },
     "devDependencies": {
         "elm": "^0.19.1-5",
