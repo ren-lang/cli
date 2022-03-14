@@ -11,6 +11,7 @@ import FFI.Path exposing (Path)
 import FFI.Process exposing (Process)
 import Ren.AST.Module as Module exposing (Module)
 import Ren.Compiler as Compiler exposing (typed)
+import Ren.Compiler.Error as Error
 
 
 {-| -}
@@ -113,7 +114,7 @@ compile ({ fs, path } as ffi) dotRenPath sources =
 
                 file =
                     fs.readFile sourcePath "utf8"
-                        |> Result.fromMaybe (Compiler.ParseError [])
+                        |> Result.fromMaybe (Error.ParseError [])
                         |> Result.andThen (Compiler.run ffiPath <| toolchain sourcePath)
             in
             Dict.insert sourcePath file files
@@ -180,7 +181,7 @@ resolve { path } sourcePath dotRenPath =
                                         -- whose name is the same as the package
                                         -- name.
                                         author :: pkg :: [] ->
-                                            String.join "/" [ author, pkg, "src", pkg ++ ".ren" ]
+                                            String.join "/" [ author, pkg, "src", pkg ]
 
                                         author :: pkg :: actualPath ->
                                             String.join "/" (author :: pkg :: "src" :: actualPath)
@@ -245,7 +246,13 @@ gather sources =
 
             else
                 Error.from "Compilation Error" "I ran into an error compiling the following files"
-                    |> Error.withMessage (String.join "\n" <| List.map Tuple.first errors)
+                    |> Error.withMessage (String.join "\n" <| List.map showError errors)
+
+        showError ( srcPath, compilerError ) =
+            String.join "\n"
+                [ srcPath
+                , String.indent 4 <| Error.toString compilerError
+                ]
     in
     Result.mapError gatherErrors <|
         List.foldr
